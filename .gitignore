@@ -1,0 +1,24 @@
+# Environment
+.env
+venv/
+__pycache__/
+*.pyc
+*.pyo
+
+# Data files (large — don't commit raw data)
+data/raw/
+data/processed/*.db
+data/processed/*.index
+
+# Model artifacts
+*.index
+*.pkl
+
+# VS Code
+.vscode/
+
+# Mac
+.DS_Store
+
+# Jupyter
+.ipynb_checkpoints/
