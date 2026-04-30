@@ -25,14 +25,25 @@ from dotenv import load_dotenv
 load_dotenv()
 
 
+PORT = int(os.getenv("PORT", 5000))
+
+
 def start_flask():
     """Start Flask in a background thread."""
-    # Set PYTHONPATH so src imports work
     import sys
     sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-
     from src.api.app import app
-    app.run(host="0.0.0.0", port=5000, debug=False, use_reloader=False)
+    app.run(host="0.0.0.0", port=PORT, debug=False, use_reloader=False)
+
+
+def check_ollama():
+    """Quick check that Ollama is reachable — warn but don't block."""
+    try:
+        import requests
+        requests.get("http://localhost:11434/api/tags", timeout=1.5)
+        return True
+    except Exception:
+        return False
 
 
 def main():
@@ -42,22 +53,31 @@ def main():
     flask_thread.start()
     time.sleep(2)  # give Flask a moment to bind
 
+    if not check_ollama():
+        print("[WARN] Ollama is not reachable at http://localhost:11434")
+        print("       Start it with: ollama serve   (and pull the model: ollama pull llama3.2)")
+
     # ── 2. Open ngrok tunnel ─────────────────────────────────────────────────
     try:
         from pyngrok import ngrok, conf
 
-        # Use auth token from env if set
         auth_token = os.getenv("NGROK_AUTHTOKEN")
         if auth_token:
             conf.get_default().auth_token = auth_token
 
-        tunnel = ngrok.connect(5000, bind_tls=True)
+        # Modern pyngrok API: addr first, then proto. HTTPS is the default.
+        try:
+            tunnel = ngrok.connect(addr=PORT, proto="http", bind_tls=True)
+        except TypeError:
+            # Newer pyngrok dropped bind_tls
+            tunnel = ngrok.connect(addr=PORT, proto="http", schemes=["https"])
         public_url = tunnel.public_url
 
         print("\n" + "=" * 55)
         print("  ✅  VitaIQ is LIVE")
         print(f"  🌐  Public URL:  {public_url}")
-        print(f"  🏠  Local URL:   http://localhost:5000")
+        print(f"  🏠  Local URL:   http://localhost:{PORT}")
+        print(f"  🔗  Share link:  {public_url}/?q=Your+question+here")
         print("=" * 55)
         print("\n  Share the public URL for your demo.")
         print("  Press Ctrl+C to stop.\n")
